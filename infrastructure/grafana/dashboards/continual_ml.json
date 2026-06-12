@@ -1,0 +1,177 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["continual-learning", "mlops"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Continual Learning Platform",
+  "uid": "continual-ml",
+  "version": 2,
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Samples processed",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [{ "expr": "cml_samples_processed_total", "refId": "A" }],
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" } } }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Throughput (samples/s)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "targets": [{ "expr": "rate(cml_samples_processed_total[1m])", "refId": "A" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Model version",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "targets": [{ "expr": "cml_model_version", "refId": "A" }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Concept drifts (validated)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "targets": [{ "expr": "cml_concept_drift_events_total", "refId": "A" }],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } } }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Spurious drift (anomalies)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "targets": [{ "expr": "cml_spurious_drift_events_total", "refId": "A" }],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "orange" } } }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Feature drift events",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "targets": [{ "expr": "cml_feature_drift_events_total", "refId": "A" }],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "yellow" } } }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "R²",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 4 },
+      "targets": [{ "expr": "cml_model_performance{metric=\"r2\"}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "decimals": 3 } }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Rolling MAE",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 4 },
+      "targets": [{ "expr": "cml_model_performance{metric=\"rolling_mae\"}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 1 } }
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Retrain recommended",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 4 },
+      "targets": [{ "expr": "cml_retrain_recommended", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "no", "color": "green" }, "1": { "text": "YES", "color": "red" } } }
+          ],
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "red", "value": 1 }
+          ]}
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Model performance (rolling)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "cml_model_performance{metric=\"rolling_mae\"}", "legendFormat": "rolling MAE", "refId": "A" },
+        { "expr": "cml_model_performance{metric=\"rolling_rmse\"}", "legendFormat": "rolling RMSE", "refId": "B" },
+        { "expr": "cml_model_performance{metric=\"mae\"}", "legendFormat": "cumulative MAE", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 8 } } }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Prediction latency (p50 / p95)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, rate(cml_prediction_latency_seconds_bucket[1m]))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, rate(cml_prediction_latency_seconds_bucket[1m]))", "legendFormat": "p95", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 8 } } }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Rolling MAE by borough",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 17 },
+      "targets": [
+        { "expr": "cml_segment_rolling_mae{kind=\"borough\"}", "legendFormat": "{{segment}}", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5 } } }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Feature drift — PSI per feature",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 17 },
+      "targets": [
+        { "expr": "cml_feature_drift_psi", "legendFormat": "{{feature}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 5 },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 0.1 },
+            { "color": "red", "value": 0.2 }
+          ] }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Observed vs predicted target",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 26 },
+      "targets": [
+        { "expr": "cml_target_value{kind=\"observed\"}", "legendFormat": "observed", "refId": "A" },
+        { "expr": "cml_target_value{kind=\"predicted\"}", "legendFormat": "predicted", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 8 } } }
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+# =============================================================================
+# Continual Learning Platform — central configuration
+# -----------------------------------------------------------------------------
+# This file is the single source of truth for runtime behavior. Every value can
+# be overridden by an environment variable using the CML_ prefix and "__" as the
+# nesting separator, e.g.  CML_STREAM__RATE_PER_SEC=50  overrides stream.rate_per_sec.
+#
+# Swapping datasets later = change `data_source.type` and add a config block.
+# No application code changes required.
+# =============================================================================
+
+app:
+  name: continual-ml-platform
+  environment: development          # development | production
+  log_level: INFO
+
+# --- Data source layer (THE plug point) --------------------------------------
+data_source:
+  type: synthetic                   # synthetic | nyc_taxi | electricity | traffic | ...
+  synthetic:
+    n_features: 6
+    seed: 42
+    noise_std: 0.5
+    # Injectable concept drift so the detector + retraining are actually exercised.
+    drift:
+      enabled: true
+      at_sample: 5000               # the target relationship shifts here
+      magnitude: 2.0
+  nyc_taxi:
+    # Cleaned parquet produced by scripts/prepare_nyc_taxi.py (offline step).
+    processed_path: data/processed/nyc_taxi.parquet
+    rush_hours: [7, 8, 9, 16, 17, 18, 19]
+    # route_distance_km simulates the planned route distance a production router
+    # provides at request time (leakage-free in that setting). false = strict
+    # no-route backtest (straight-line proxy only).
+    use_route_distance: true
+
+# --- Stream simulator (Kafka stand-in) ---------------------------------------
+stream:
+  rate_per_sec: 200                 # records emitted per second
+  jitter: 0.0                       # 0..1 fractional randomness on inter-arrival time
+  max_samples: null                 # null = run forever
+  mode: fixed                       # fixed | time_warp (time_warp respects record timestamps)
+  time_warp_factor: 600.0           # real seconds compressed into one wall second
+  autostart: true                   # engine begins streaming as soon as the API boots
+
+# --- Online feature pipeline -------------------------------------------------
+features:
+  rolling_window: 50                # window for running stats
+  lags: [1, 2, 3]                   # autoregressive lag features
+  # Online target encoders (leakage-free "zone-pair memory"): running mean
+  # duration per combination, updated only after the label is known. Encoders
+  # whose source columns are absent (e.g. on synthetic data) are skipped.
+  target_encoders:
+    - [pu_zone, do_zone]            # mean duration for this exact origin->dest
+    - [do_zone]                     # destination-zone baseline
+    - [pu_borough, do_borough, pickup_hour]   # borough-pair by hour of day
+  te_smoothing: 20.0
+
+# --- Online model ------------------------------------------------------------
+model:
+  task: regression                  # regression (v1) | classification
+  type: hoeffding_tree              # linear | hoeffding_tree | adaptive_tree | adaptive_forest
+  learning_rate: 0.01               # (linear only)
+  l2: 2.0                           # L2 weight decay (linear only) — bounds weights
+  warmup: 100                       # collect target stats before the learner starts
+  # Raw zones are summarized by te_pu_zone_do_zone, so the model ignores them:
+  # 5x smaller + faster tree at the same accuracy.
+  ignore_features: [pu_zone, do_zone]
+  rolling_window: 1000              # window for rolling performance metrics
+  params: {}
+  metric: mae                       # primary display metric: mae | rmse | r2
+
+# --- Drift detection ---------------------------------------------------------
+drift:
+  concept:                          # online, on the live error stream
+    detector: adwin                 # adwin | ddm | page_hinkley
+    delta: 0.002
+    validation_window: 1500         # before/after window to validate each event
+    validation_min_rel_shift: 0.10  # a real drift moves mean error >10%
+    validation_min_effect: 0.20     # ...and Cohen's d > 0.2
+  feature:                          # windowed, PSI-based (Evidently-equivalent)
+    reference_size: 5000            # broad reference so diurnal cycles aren't false positives
+    window_size: 2000
+    check_every: 1000
+    psi_threshold: 0.2              # PSI > 0.2 => significant population shift
+
+engine:
+  log_every: 500                    # push metrics to MLflow every N samples
+  recent_buffer: 200                # points kept for the live frontend charts
+  # Validated concept drift (degradation direction) raises a retrain-recommended
+  # alert; new model versions come only from the promote flow (scripts/retrain.py).
+  retrain_alert_cooldown: 20000
+
+# --- MLflow (SQLite backend + local artifacts in v1) -------------------------
+mlflow:
+  tracking_uri: http://mlflow:5000
+  experiment_name: continual-learning
+  registered_model_name: continual-online-model
+  register_on_drift: true           # snapshot a new version when drift fires
+
+# --- Monitoring --------------------------------------------------------------
+monitoring:
+  metrics_path: /metrics            # Prometheus exposition endpoint on the API

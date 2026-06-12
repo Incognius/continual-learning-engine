@@ -1,0 +1,78 @@
+# Continual Learning MLOps Platform — full local stack.
+#
+#   docker compose up --build
+#
+# Services:
+#   api        FastAPI + the online-learning engine + live dashboard  (:8000)
+#   mlflow     MLflow tracking server (SQLite backend, local artifacts) (:5000)
+#   prometheus scrapes the API's /metrics                              (:9090)
+#   grafana    dashboards over Prometheus                              (:3000)
+#
+# Data source defaults to `synthetic` so the stack runs with zero setup.
+# To use the real NYC taxi data: run `python scripts/prepare_nyc_taxi.py` on the
+# host first, then `DATA_SOURCE=nyc_taxi docker compose up --build`.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.api
+    image: continual-ml:latest
+    ports:
+      - "8000:8000"
+    environment:
+      CML_DATA_SOURCE__TYPE: ${DATA_SOURCE:-synthetic}
+      CML_MLFLOW__TRACKING_URI: http://mlflow:5000
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ./configs:/app/configs:ro
+      - ./data:/app/data:ro          # prepared parquet (for nyc_taxi)
+      - ./artifacts:/app/artifacts:ro  # champion bundle for warm-start (optional)
+    depends_on:
+      - mlflow
+    restart: unless-stopped
+
+  mlflow:
+    # Reuse the API image — it already contains mlflow.
+    image: continual-ml:latest
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.api
+    command: >
+      mlflow server
+      --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  mlflow_data:

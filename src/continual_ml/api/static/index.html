@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Continual Learning Platform</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="dot" id="status-dot"></span>
+      <div>
+        <h1>Continual Learning MLOps Platform</h1>
+        <div class="sub">
+          source: <b id="source">—</b> · model: <b id="model-type">—</b> ·
+          target: <b id="target-name">—</b> · MLflow: <b id="mlflow">—</b>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <span class="rate">
+        rate <b id="rate-val">—</b>/s
+        <input type="range" id="rate" min="1" max="1000" value="200" />
+      </span>
+      <button id="btn-pause">Pause</button>
+      <button id="btn-resume" class="primary">Resume</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="kpis" id="kpis">
+      <div class="kpi"><div class="label">Samples processed</div><div class="value" id="k-samples">0</div></div>
+      <div class="kpi"><div class="label">Labeled samples</div><div class="value" id="k-labeled">0</div></div>
+      <div class="kpi"><div class="label">Rolling MAE</div><div class="value" id="k-mae">0<span class="unit"> s</span></div></div>
+      <div class="kpi"><div class="label">R²</div><div class="value" id="k-r2">0</div></div>
+      <div class="kpi"><div class="label">Model version</div><div class="value" id="k-version">0</div></div>
+      <div class="kpi"><div class="label">Concept drifts (validated)</div><div class="value" id="k-concept">0</div></div>
+      <div class="kpi"><div class="label">Spurious (anomalies)</div><div class="value" id="k-spurious">0</div></div>
+      <div class="kpi"><div class="label">Retrain?</div><div class="value" id="k-retrain">no</div></div>
+    </section>
+
+    <div class="grid">
+      <div>
+        <div class="panel">
+          <h2>Model performance over time (rolling)</h2>
+          <canvas id="perf-chart" height="220"></canvas>
+          <div class="legend">
+            <span><i class="swatch" style="background:#5b8cff"></i> Rolling MAE</span>
+            <span><i class="swatch" style="background:#fbbd23"></i> Rolling RMSE</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Predicted vs actual — last 200 records</h2>
+          <canvas id="pred-chart" height="220"></canvas>
+          <div class="legend">
+            <span><i class="swatch" style="background:#36d399"></i> Actual</span>
+            <span><i class="swatch" style="background:#5b8cff"></i> Predicted</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 id="predict-title">Trip ETA predictor</h2>
+          <div class="predict-form" id="predict-form"></div>
+          <div class="result" id="predict-result"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <h2>Feature drift — PSI</h2>
+          <div class="bars" id="psi-bars"><span class="muted">waiting for reference window…</span></div>
+        </div>
+
+        <div class="panel">
+          <h2>Drift events</h2>
+          <div class="events" id="events"><span class="muted">none yet</span></div>
+        </div>
+
+        <div class="panel">
+          <h2>Endpoints</h2>
+          <div class="footer-links">
+            <a href="/stats" target="_blank">/stats</a>
+            <a href="/metrics" target="_blank">/metrics</a>
+            <a href="/health" target="_blank">/health</a>
+            <a href="/docs" target="_blank">/docs</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

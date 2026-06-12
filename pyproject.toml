@@ -1,0 +1,49 @@
+[project]
+name = "continual-ml"
+version = "0.1.0"
+description = "Production-style continual learning MLOps platform (online learning, drift detection, monitoring, serving)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+# Runtime dependencies. Pinned with lower bounds; the Docker image will
+# resolve a concrete, reproducible set. Kept deliberately small for v1 —
+# no Postgres/Kafka/Airflow clients yet (those are deferred by design).
+dependencies = [
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "pyyaml>=6.0",
+    "river>=0.21",          # online / continual learning
+    "mlflow>=2.14",         # experiment + model lifecycle (SQLite backend in v1)
+    "evidently>=0.4.30",    # feature / data drift reports
+    "prometheus-client>=0.20",
+    "numpy>=1.26",
+    "pandas>=2.2",          # required by evidently
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "httpx>=0.27",          # FastAPI TestClient transport
+    "ruff>=0.5",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"continual_ml.api" = ["static/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
